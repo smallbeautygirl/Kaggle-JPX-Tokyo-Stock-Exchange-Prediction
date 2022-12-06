@@ -1,0 +1,21 @@
+{
+
+    "python.linting.pylintEnabled": true,
+    "python.linting.enabled": true,
+    "python.linting.pycodestyleEnabled": false,
+    "files.trimTrailingWhitespace": true,
+    "editor.formatOnSave": true,
+    "editor.wordWrap": "on",
+    "editor.trimAutoWhitespace": true,
+    "[python]": {
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": true
+        }
+    },
+    "python.formatting.autopep8Args": [
+        "--aggressive",
+    ],
+    "python.linting.pylintArgs": [
+        "--enable=W0614"
+    ]
+}
