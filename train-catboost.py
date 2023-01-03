@@ -2,6 +2,7 @@ import math
 import os
 import warnings
 
+import catboost as cb
 import joblib
 import lightgbm as lgb
 import matplotlib.pyplot as plt
@@ -14,7 +15,7 @@ from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import (GroupKFold, KFold, StratifiedKFold,
                                      TimeSeriesSplit, cross_val_score)
 
-# import jpx_tokyo_market_predictions
+# import jpx_tokyo_market_prediction
 
 warnings.filterwarnings('ignore')
 
@@ -128,7 +129,7 @@ def add_rank(df):
 
 
 def fill_nan_inf(df):
-    df = df.fillna(0) # 用 0 取代 nan
+    df = df.fillna(0)
     df = df.replace([np.inf, -np.inf], 0)
     return df
 
@@ -172,7 +173,6 @@ list_spred_h = list(
     (train.groupby('SecuritiesCode')['Target'].max() -
      train.groupby('SecuritiesCode')['Target'].min()).sort_values()[
         :1000].index)
-
 list_spred_l = list(
     (train.groupby('SecuritiesCode')['Target'].max() -
      train.groupby('SecuritiesCode')['Target'].min()).sort_values()[
@@ -186,32 +186,37 @@ features = ['High', 'Low', 'Open', 'Close', 'Volume', 'return_1month', 'return_2
 # features =['High','Low','Open','Close','Volume',]
 train = fill_nan_inf(train)
 
-print(train.head())
-params_lgb = {
-    # default = 0.1, type = double, aliases: shrinkage_rate, eta, constraints:
-    # learning_rate > 0.0
-    'learning_rate': 0.005,
-    'metric': 'None', # original: None
-    'objective': 'regression',  # objective 🔗︎, default = regression, type = enum, options: regression, regression_l1, huber, fair, poisson, quantile, mape, gamma, tweedie, binary, multiclass, multiclassova, cross_entropy
-    'boosting': 'gbdt',  # boosting 🔗︎, default = gbdt, type = enum, options: gbdt, rf, dart, goss, aliases: boosting_type, boost
-    'verbosity': 0,
-    'n_jobs': -1,
-    'force_col_wise': True}
+# params_lgb = {
+#     # default = 0.1, type = double, aliases: shrinkage_rate, eta, constraints:
+#     # learning_rate > 0.0
+#     'learning_rate': 0.005,
+#     'metric': 'None', # original: None
+#     'objective': 'regression',  # objective 🔗︎, default = regression, type = enum, options: regression, regression_l1, huber, fair, poisson, quantile, mape, gamma, tweedie, binary, multiclass, multiclassova, cross_entropy
+#     'boosting': 'gbdt',  # boosting 🔗︎, default = gbdt, type = enum, options: gbdt, rf, dart, goss, aliases: boosting_type, boost
+#     'verbosity': 0,
+#     'n_jobs': -1,
+#     'force_col_wise': True}
 
-tr_dataset = lgb.Dataset(train[train['SecuritiesCode'].isin(list_spred_h)][features],
-                         train[train['SecuritiesCode'].isin(list_spred_h)]["Target"], feature_name=features)
-vl_dataset = lgb.Dataset(train[train['SecuritiesCode'].isin(list_spred_l)][features],
-                         train[train['SecuritiesCode'].isin(list_spred_l)]["Target"], feature_name=features)
+# tr_dataset = lgb.Dataset(train[train['SecuritiesCode'].isin(list_spred_h)][features],
+#                          train[train['SecuritiesCode'].isin(list_spred_h)]["Target"], feature_name=features)
+# vl_dataset = lgb.Dataset(train[train['SecuritiesCode'].isin(list_spred_l)][features],
+#                          train[train['SecuritiesCode'].isin(list_spred_l)]["Target"], feature_name=features)
 
-# 1ep = batch size * iterations = training data
-model = lgb.train(params=params_lgb,
-                  train_set=tr_dataset,
-                  valid_sets=[tr_dataset, vl_dataset],
-                  num_boost_round=1,  # Number of boosting iterations. # 3000
-                  feval=feval_pearsonr,
-                  callbacks=[lgb.early_stopping(stopping_rounds=300, verbose=True), lgb.log_evaluation(period=100)])
+# # 1ep = batch size * iterations = training data
+# model = lgb.train(params=params_lgb,
+#                   train_set=tr_dataset,
+#                   valid_sets=[tr_dataset, vl_dataset],
+#                   num_boost_round=1,  # Number of boosting iterations. # 3000
+#                   feval=feval_pearsonr,
+#                   callbacks=[lgb.early_stopping(stopping_rounds=300, verbose=True), lgb.log_evaluation(period=100)])
 
 
+train_pool = cb.Pool(train[train['SecuritiesCode'].isin(list_spred_h)][features],
+                         train[train['SecuritiesCode'].isin(list_spred_h)]["Target"],feature_names=features)
+val_pool = cb.Pool(train[train['SecuritiesCode'].isin(list_spred_l)][features],
+                         train[train['SecuritiesCode'].isin(list_spred_l)]["Target"],feature_names=features)
+model = cb.CatBoostRegressor(loss_function='RMSE',use_best_model=True,early_stopping_rounds=300,num_boost_round=1)
+model.fit(train_pool,eval_set=val_pool)
 # Ranking filtering by Securities with previous list based in target
 # spread and target mean.
 
@@ -233,7 +238,7 @@ preds = model.predict(test[features])
 print(math.sqrt(mean_squared_error(preds, test.Target)))
 
 # sample_submission = pd.read_csv(
-#     os.path.join(input_dir,"example_test_files/sample_submission.csv"))
+#     "../input/jpx-tokyo-stock-exchange-prediction/example_test_files/sample_submission.csv")
 
 # env = jpx_tokyo_market_prediction.make_env()   # initialize the environment
 # iter_test = env.iter_test()    # an iterator which loops over the test files
