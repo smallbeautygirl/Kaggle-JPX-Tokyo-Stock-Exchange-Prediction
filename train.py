@@ -78,6 +78,21 @@ def add_features(feats):
         feats["Close"].rolling(60).mean()
     )
 
+    #威廉指標
+    #20天內的最高價
+    #20天內的最低價
+    feats["higest_20"] = feats["Close"].rolling(20).max()
+    feats["lowest_20"] = feats["Close"].rolling(20).min()
+    
+    feats["higest_40"] = feats["Close"].rolling(40).max()
+    feats["lowest_40"] = feats["Close"].rolling(40).min()
+    
+    feats["higest_60"] = feats["Close"].rolling(60).max()
+    feats["lowest_60"] = feats["Close"].rolling(60).min()
+
+    feats["Williams_20day"] = (feats["Close"]-feats["higest_20"]) / (feats["higest_20"] - feats["lowest_20"])
+    feats["Williams_40day"] = (feats["Close"]-feats["higest_40"]) / (feats["higest_40"] - feats["lowest_40"])
+    feats["Williams_60day"] = (feats["Close"]-feats["higest_60"]) / (feats["higest_60"] - feats["lowest_60"])
     return feats
 
 
@@ -181,8 +196,11 @@ list_spred_l = list(
 # Training just with Securities with hight target_spread and validated
 # with Securities with low target_spread.
 
+# features = ['High', 'Low', 'Open', 'Close', 'Volume', 'return_1month', 'return_2month', 'return_3month', 'volatility_1month', 'volatility_2month', 'volatility_3month',
+#             'MA_gap_1month', 'MA_gap_2month', 'MA_gap_3month']
+
 features = ['High', 'Low', 'Open', 'Close', 'Volume', 'return_1month', 'return_2month', 'return_3month', 'volatility_1month', 'volatility_2month', 'volatility_3month',
-            'MA_gap_1month', 'MA_gap_2month', 'MA_gap_3month']
+            'MA_gap_1month', 'MA_gap_2month', 'MA_gap_3month','Williams_20day','Williams_40day','Williams_60day']
 # features =['High','Low','Open','Close','Volume',]
 train = fill_nan_inf(train)
 
